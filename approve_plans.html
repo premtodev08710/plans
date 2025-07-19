@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อนุมัติแผนการสอน - ระบบบันทึกการส่งแผนการสอน</title>
+
+    <!-- Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bma-green: #006A4E;
+            --bma-green-dark: #00563F;
+            --light-green: #F0F7F5;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Kodchasan', sans-serif;
+            background-color: var(--light-green);
+            color: var(--text-color);
+        }
+        .navbar {
+            background-color: var(--bma-green);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-tabs .nav-link {
+            color: var(--bma-green);
+        }
+        .nav-tabs .nav-link.active {
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+        .card {
+            border-radius: 0.75rem;
+            border: 1px solid #dee2e6;
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        .swal2-confirm { background-color: var(--bma-green) !important; }
+        .swal2-deny { background-color: #dc3545 !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-check2-square"></i> อนุมัติแผนการสอน</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="my_plans.html">แผนของฉัน</a>
+                    </li>
+                     <li class="nav-item" id="admin-link-item" style="display: none;">
+                        <a class="nav-link" href="admin.html">จัดการระบบ</a>
+                    </li>
+                </ul>
+                <div class="dropdown">
+                    <a href="#" class="nav-link dropdown-toggle text-white" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> <span id="userName"></span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item text-danger" href="#" id="logoutButton">ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <h2 class="mb-3">พิจารณาแผนการสอน</h2>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="approvalTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-tab-pane" type="button" role="tab">
+                    รออนุมัติ <span class="badge bg-warning text-dark" id="pending-count">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab">
+                    ประวัติการอนุมัติ
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="approvalTabContent">
+            <!-- Pending Approval Tab -->
+            <div class="tab-pane fade show active" id="pending-tab-pane" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ชื่อแผนการสอน</th>
+                                        <th>ผู้สอน</th>
+                                        <th>รายวิชา</th>
+                                        <th>วันที่ส่ง</th>
+                                        <th class="text-center">การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pendingPlansTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div id="no-pending-plans-message" class="text-center p-5 d-none">
+                            <i class="bi bi-check2-circle fs-1 text-success"></i>
+                            <h5 class="mt-3">ไม่มีแผนการสอนที่รออนุมัติ</h5>
+                            <p class="text-muted">ยอดเยี่ยม! คุณได้ตรวจสอบแผนทั้งหมดแล้ว</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval History Tab -->
+            <div class="tab-pane fade" id="history-tab-pane" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ชื่อแผนการสอน</th>
+                                        <th>ผู้สอน</th>
+                                        <th>วันที่อนุมัติ</th>
+                                        <th>ผู้อนุมัติ</th>
+                                        <th class="text-center">การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="approvedHistoryTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div id="no-history-message" class="text-center p-5 d-none">
+                            <i class="bi bi-clock-history fs-1 text-muted"></i>
+                            <h5 class="mt-3">ยังไม่มีประวัติการอนุมัติ</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof firebaseConfig === 'undefined') {
+                document.body.innerHTML = '<div class="alert alert-danger m-3">Fatal Error: firebase-config.js not loaded.</div>';
+                return;
+            }
+
+            const app = firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            let currentUserId = null;
+            let allUsersCache = {}; // Cache for user data
+
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const logoutButton = document.getElementById('logoutButton');
+            const userNameEl = document.getElementById('userName');
+            const pendingPlansTableBody = document.getElementById('pendingPlansTableBody');
+            const approvedHistoryTableBody = document.getElementById('approvedHistoryTableBody');
+            const pendingCountBadge = document.getElementById('pending-count');
+
+            const fetchAllUsers = async () => {
+                const snapshot = await db.collection('users').get();
+                snapshot.forEach(doc => {
+                    allUsersCache[doc.id] = doc.data();
+                });
+            };
+
+            const fetchUserDataAndAuthorize = async (userId) => {
+                try {
+                    const userDoc = await db.collection('users').doc(userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        userNameEl.textContent = `${userData.firstName} ${userData.lastName}`;
+                        if (userData.role === 'admin') {
+                            document.getElementById('admin-link-item').style.display = 'block';
+                        }
+
+                        if (userData.role !== 'admin' && userData.role !== 'head_department') {
+                            window.location.href = 'my_plans.html';
+                        } else {
+                            await fetchAllUsers();
+                            listenToPendingPlans();
+                            listenToApprovedPlans();
+                        }
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                } catch (error) {
+                    window.location.href = 'login.html';
+                }
+            };
+
+            const listenToPendingPlans = () => {
+                db.collection('teaching_plans')
+                  .where('status', '==', 'pending_approval')
+                  .orderBy('submittedAt', 'desc')
+                  .onSnapshot(snapshot => {
+                      pendingCountBadge.textContent = snapshot.size;
+                      renderTable(snapshot.docs, pendingPlansTableBody, document.getElementById('no-pending-plans-message'), 'pending');
+                  }, error => console.error("Error fetching pending plans:", error));
+            };
+
+            const listenToApprovedPlans = () => {
+                db.collection('teaching_plans')
+                  .where('status', '==', 'approved')
+                  .orderBy('approvedAt', 'desc')
+                  .onSnapshot(snapshot => {
+                      renderTable(snapshot.docs, approvedHistoryTableBody, document.getElementById('no-history-message'), 'approved');
+                  }, error => console.error("Error fetching approved plans:", error));
+            };
+
+            const renderTable = (docs, tbody, noDataMessage, type) => {
+                loadingOverlay.style.display = 'none';
+                if (docs.length === 0) {
+                    tbody.innerHTML = '';
+                    noDataMessage.classList.remove('d-none');
+                    return;
+                }
+                noDataMessage.classList.add('d-none');
+                tbody.innerHTML = docs.map(doc => {
+                    const plan = { id: doc.id, ...doc.data() };
+                    const teacher = allUsersCache[plan.teacherId] || { firstName: 'ไม่พบ', lastName: 'ข้อมูล' };
+                    const teacherName = `${teacher.firstName} ${teacher.lastName}`;
+                    
+                    if (type === 'pending') {
+                        const submittedDate = plan.submittedAt ? new Date(plan.submittedAt.seconds * 1000).toLocaleDateString('th-TH') : 'N/A';
+                        return `
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">${plan.planName}</div>
+                                    <a href="${plan.googleDriveLink}" target="_blank" class="small text-muted text-decoration-none"><i class="bi bi-link-45deg"></i> ดูไฟล์</a>
+                                </td>
+                                <td>${teacherName}</td>
+                                <td>${plan.subject}</td>
+                                <td>${submittedDate}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-success me-1 js-approve" data-id="${plan.id}"><i class="bi bi-check-lg"></i> อนุมัติ</button>
+                                    <button class="btn btn-sm btn-danger js-reject" data-id="${plan.id}"><i class="bi bi-x-lg"></i> ส่งกลับ</button>
+                                </td>
+                            </tr>`;
+                    } else { // approved
+                        const approver = allUsersCache[plan.approverId] || { firstName: 'ไม่พบ', lastName: 'ข้อมูล' };
+                        const approverName = `${approver.firstName} ${approver.lastName}`;
+                        const approvedDate = plan.approvedAt ? new Date(plan.approvedAt.seconds * 1000).toLocaleDateString('th-TH') : 'N/A';
+                        return `
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">${plan.planName}</div>
+                                    <a href="${plan.googleDriveLink}" target="_blank" class="small text-muted text-decoration-none"><i class="bi bi-link-45deg"></i> ดูไฟล์</a>
+                                </td>
+                                <td>${teacherName}</td>
+                                <td>${approvedDate}</td>
+                                <td>${approverName}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-warning js-undo" data-id="${plan.id}"><i class="bi bi-arrow-counterclockwise"></i> ยกเลิก</button>
+                                </td>
+                            </tr>`;
+                    }
+                }).join('');
+            };
+
+            const approvePlan = (planId) => {
+                Swal.fire({
+                    title: 'ยืนยันการอนุมัติ', icon: 'question', showCancelButton: true,
+                    confirmButtonText: 'ใช่, อนุมัติ', cancelButtonText: 'ยกเลิก'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            await db.collection('teaching_plans').doc(planId).update({
+                                status: 'approved',
+                                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                approverId: currentUserId
+                            });
+                            Swal.fire('อนุมัติสำเร็จ!', '', 'success');
+                        } catch (e) { Swal.fire('ผิดพลาด', 'ไม่สามารถอนุมัติได้', 'error'); }
+                    }
+                });
+            };
+
+            const rejectPlan = (planId) => {
+                Swal.fire({
+                    title: 'ส่งแผนกลับไปแก้ไข', input: 'textarea', inputLabel: 'เหตุผลประกอบ (จำเป็น)',
+                    inputPlaceholder: 'กรุณาระบุสิ่งที่ต้องปรับปรุง...', icon: 'warning', showCancelButton: true,
+                    confirmButtonText: 'ยืนยันส่งกลับ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545',
+                    inputValidator: (v) => !v && 'กรุณาระบุเหตุผลประกอบ!'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            // *** FIX: Use client-side timestamp (new Date()) instead of serverTimestamp() ***
+                            const rejectionEntry = {
+                                comment: result.value,
+                                rejecterId: currentUserId,
+                                rejectedAt: new Date() // Using client's current time
+                            };
+                            await db.collection('teaching_plans').doc(planId).update({
+                                status: 'needs_improvement',
+                                rejectionHistory: firebase.firestore.FieldValue.arrayUnion(rejectionEntry)
+                            });
+                            Swal.fire('ส่งกลับสำเร็จ!', '', 'success');
+                        } catch (e) { 
+                            console.error("Error rejecting plan:", e);
+                            Swal.fire('ผิดพลาด', 'ไม่สามารถส่งแผนกลับได้', 'error'); 
+                        }
+                    }
+                });
+            };
+
+            const undoApproval = (planId) => {
+                Swal.fire({
+                    title: 'ยกเลิกการอนุมัติ?',
+                    text: 'แผนจะกลับไปสถานะ "รออนุมัติ" อีกครั้ง',
+                    icon: 'warning', showCancelButton: true,
+                    confirmButtonText: 'ใช่, ยกเลิก', cancelButtonText: 'ไม่'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            await db.collection('teaching_plans').doc(planId).update({
+                                status: 'pending_approval',
+                                approvedAt: firebase.firestore.FieldValue.delete(),
+                                approverId: firebase.firestore.FieldValue.delete()
+                            });
+                            Swal.fire('ยกเลิกสำเร็จ!', '', 'success');
+                        } catch (e) { Swal.fire('ผิดพลาด', 'ไม่สามารถยกเลิกการอนุมัติได้', 'error'); }
+                    }
+                });
+            };
+
+            document.body.addEventListener('click', e => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const id = button.dataset.id;
+                if (button.classList.contains('js-approve')) approvePlan(id);
+                if (button.classList.contains('js-reject')) rejectPlan(id);
+                if (button.classList.contains('js-undo')) undoApproval(id);
+            });
+
+            logoutButton.addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUserId = user.uid;
+                    fetchUserDataAndAuthorize(user.uid);
+                } else {
+                    window.location.href = 'login.html';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

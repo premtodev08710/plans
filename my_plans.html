@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แผนการสอนของฉัน - ระบบบันทึกการส่งแผนการสอน</title>
+
+    <!-- Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bma-green: #006A4E;
+            --bma-green-dark: #00563F;
+            --light-green: #F0F7F5;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Kodchasan', sans-serif;
+            background-color: var(--light-green);
+            color: var(--text-color);
+        }
+        .navbar {
+            background-color: var(--bma-green);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background-color: var(--bma-green);
+            border-color: var(--bma-green);
+        }
+        .btn-primary:hover {
+            background-color: var(--bma-green-dark);
+            border-color: var(--bma-green-dark);
+        }
+        .card {
+            border-radius: 0.75rem;
+            border: 1px solid #dee2e6;
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        .swal2-confirm { background-color: var(--bma-green) !important; }
+        #qrCodeContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        #qrCodeContainer img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="my_plans.html"><i class="bi bi-book-half"></i> ระบบส่งแผนการสอน</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="my_plans.html">แผนการสอนของฉัน</a>
+                    </li>
+                    <li class="nav-item" id="nav-approve" style="display: none;"><a class="nav-link" href="approve_plans.html">อนุมัติแผน</a></li>
+                    <li class="nav-item" id="nav-director" style="display: none;"><a class="nav-link" href="director.html">สำหรับ ผอ.</a></li>
+                    <li class="nav-item" id="nav-admin" style="display: none;"><a class="nav-link" href="admin.html">จัดการระบบ</a></li>
+                </ul>
+                <div class="dropdown">
+                    <a href="#" class="nav-link dropdown-toggle text-white" data-bs-toggle="dropdown"><i class="bi bi-person-circle"></i> <span id="userName"></span></a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item text-danger" href="#" id="logoutButton">ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h2 class="mb-0">แผนการสอนของฉัน</h2>
+            <div>
+                <button class="btn btn-outline-success" id="downloadQrButton" disabled><i class="bi bi-download"></i> Download QR ที่เลือก</button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#planModal" id="addPlanButton"><i class="bi bi-plus-circle-fill"></i> เพิ่มแผนการสอนใหม่</button>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><input type="text" class="form-control" id="searchInput" placeholder="ค้นหาตามชื่อแผน, วิชา..."></div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">กรองตามสถานะทั้งหมด</option>
+                            <option value="draft">แบบร่าง</option>
+                            <option value="pending_approval">รออนุมัติ</option>
+                            <option value="approved">อนุมัติแล้ว (รอ ผอ.)</option>
+                            <option value="final_approved">อนุมัติใช้งานแล้ว</option>
+                            <option value="needs_improvement">ต้องปรับปรุง</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><button class="btn btn-outline-secondary w-100" id="resetFilterButton">ล้างตัวกรอง</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 5%;"><input type="checkbox" class="form-check-input" id="selectAllCheckbox"></th>
+                                <th>ชื่อแผนการสอน / เหตุผลที่ต้องแก้ไข</th>
+                                <th>รายวิชา</th>
+                                <th>สถานะ</th>
+                                <th class="text-center">การดำเนินการ</th>
+                                <th class="text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="plansTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="no-plans-message" class="text-center p-5 d-none"><i class="bi bi-journal-x fs-1 text-muted"></i><h5 class="mt-3">ไม่พบแผนการสอน</h5></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="planModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="planModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="planForm">
+                        <input type="hidden" id="planId">
+                        <div class="mb-3"><label class="form-label">ชื่อแผนการสอน</label><input type="text" id="planName" class="form-control" required></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">รายวิชา</label><select id="subject" class="form-select" required></select></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">ห้องเรียน</label><select id="classroom" class="form-select" required disabled></select></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">ภาคเรียน</label><select id="semester" class="form-select" required><option value="1">1</option><option value="2">2</option></select></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">ปีการศึกษา</label><input type="number" id="academicYear" class="form-control" required></div>
+                        </div>
+                        <div class="mb-3"><label class="form-label">ลิงก์ Google Drive</label><input type="url" id="googleDriveLink" class="form-control" placeholder="https://docs.google.com/..." required></div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="savePlanButton">บันทึก</button></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="qrCodeModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="qrCodeModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body"><div id="qrCodeContainer"></div></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof firebaseConfig === 'undefined') {
+                document.body.innerHTML = '<div class="alert alert-danger m-3">Fatal Error: firebase-config.js not loaded.</div>';
+                return;
+            }
+
+            const app = firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            let currentUserId = null;
+            let allPlans = [];
+            let subjectsCache = [];
+            let currentFilters = { searchTerm: '', status: '' };
+
+            const planModal = new bootstrap.Modal(document.getElementById('planModal'));
+            const qrCodeModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
+            const qrCodeContainer = document.getElementById('qrCodeContainer');
+            
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const userNameEl = document.getElementById('userName');
+            const plansTableBody = document.getElementById('plansTableBody');
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const subjectSelect = document.getElementById('subject');
+            const classroomSelect = document.getElementById('classroom');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const downloadQrButton = document.getElementById('downloadQrButton');
+
+            const fetchUserDataAndSetupNav = async (userId) => {
+                try {
+                    const userDoc = await db.collection('users').doc(userId).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        userNameEl.textContent = `${userData.firstName} ${userData.lastName}`;
+                        const userRole = userData.role;
+                        if (userRole === 'head_department' || userRole === 'admin') {
+                            document.getElementById('nav-approve').style.display = 'block';
+                        }
+                        if (userRole === 'director') {
+                            document.getElementById('nav-director').style.display = 'block';
+                        }
+                        if (userRole === 'admin') {
+                            document.getElementById('nav-admin').style.display = 'block';
+                        }
+                    }
+                } catch (error) { console.error("Error fetching user data:", error); }
+            };
+            
+            const loadFormDependencies = async () => {
+                subjectSelect.innerHTML = '<option value="">-- กรุณาเลือกวิชา --</option>';
+                const snapshot = await db.collection('subjects').orderBy('code').get();
+                subjectsCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                subjectsCache.forEach(subject => {
+                    const text = `${subject.code} - ${subject.name}`;
+                    subjectSelect.innerHTML += `<option value="${text}">${text}</option>`;
+                });
+            };
+            
+            const listenToPlans = (userId) => {
+                db.collection('teaching_plans')
+                  .where('teacherId', '==', userId)
+                  .orderBy('createdAt', 'desc')
+                  .onSnapshot(snapshot => {
+                      allPlans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                      applyFiltersAndRender();
+                      loadingOverlay.style.display = 'none';
+                  }, error => {
+                      console.error("Error fetching plans:", error);
+                      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลแผนการสอนได้', 'error');
+                  });
+            };
+            
+            const applyFiltersAndRender = () => {
+                let filtered = [...allPlans];
+                if (currentFilters.status) {
+                    filtered = filtered.filter(p => p.status === currentFilters.status);
+                }
+                if (currentFilters.searchTerm) {
+                    const term = currentFilters.searchTerm.toLowerCase();
+                    filtered = filtered.filter(p => (p.planName?.toLowerCase().includes(term)) || (p.subject?.toLowerCase().includes(term)));
+                }
+                renderPlans(filtered);
+            };
+            
+            const getStatusBadge = (status) => {
+                const map = {
+                    draft: { text: 'แบบร่าง', class: 'bg-secondary' },
+                    pending_approval: { text: 'รออนุมัติ', class: 'bg-warning text-dark' },
+                    approved: { text: 'อนุมัติแล้ว (รอ ผอ.)', class: 'bg-info text-dark' },
+                    final_approved: { text: 'อนุมัติใช้งานแล้ว', class: 'bg-success' },
+                    needs_improvement: { text: 'ต้องปรับปรุง', class: 'bg-danger' }
+                };
+                const { text, class: badgeClass } = map[status] || { text: status, class: 'bg-light text-dark' };
+                return `<span class="badge ${badgeClass}">${text}</span>`;
+            };
+            
+            const renderPlans = (plans) => {
+                const noPlansMessage = document.getElementById('no-plans-message');
+                if (plans.length === 0) {
+                    plansTableBody.innerHTML = '';
+                    noPlansMessage.classList.remove('d-none');
+                    return;
+                }
+                noPlansMessage.classList.add('d-none');
+                plansTableBody.innerHTML = plans.map(plan => {
+                    const canSubmit = plan.status === 'draft' || plan.status === 'needs_improvement';
+                    const canEdit = canSubmit;
+                    const planName = (plan.planName || '').replace(/"/g, '&quot;');
+                    const subjectName = (plan.subject || '').replace(/"/g, '&quot;');
+                    let rejectionInfo = '';
+                    if (plan.status === 'needs_improvement' && Array.isArray(plan.rejectionHistory) && plan.rejectionHistory.length > 0) {
+                        const latestRejection = plan.rejectionHistory[plan.rejectionHistory.length - 1];
+                        rejectionInfo = `<div class="small text-danger border-start border-danger border-3 ps-2 mt-2"><strong>เหตุผลที่ต้องปรับปรุง:</strong> ${latestRejection.comment}</div>`;
+                    }
+
+                    return `
+                        <tr>
+                            <td class="text-center"><input type="checkbox" class="form-check-input plan-checkbox" data-link="${plan.googleDriveLink || ''}" data-name="${planName}" data-subject="${subjectName}"></td>
+                            <td>
+                                <div class="fw-bold">${plan.planName || ''}</div>
+                                <a href="${plan.googleDriveLink || '#'}" target="_blank" class="small text-muted text-decoration-none mt-1 d-block"><i class="bi bi-link-45deg"></i> ดูไฟล์</a>
+                                ${rejectionInfo}
+                            </td>
+                            <td>${plan.subject || ''}</td>
+                            <td>${getStatusBadge(plan.status)}</td>
+                            <td class="text-center">
+                                ${canSubmit ? `<button class="btn btn-sm btn-success js-submit" data-id="${plan.id}">ส่งอนุมัติ</button>` : `<span class="text-muted small fst-italic">-</span>`}
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-info me-1 js-qr" data-link="${plan.googleDriveLink}" data-name="${planName}" data-subject="${subjectName}" title="สร้าง QR Code"><i class="bi bi-qr-code"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary js-edit" data-id="${plan.id}" ${!canEdit ? 'disabled' : ''}><i class="bi bi-pencil-fill"></i></button>
+                                <button class="btn btn-sm btn-outline-danger js-delete" data-id="${plan.id}" ${!canEdit ? 'disabled' : ''}><i class="bi bi-trash-fill"></i></button>
+                            </td>
+                        </tr>`;
+                }).join('');
+            };
+
+            const savePlan = async () => {
+                const planData = {
+                    planName: document.getElementById('planName').value.trim(),
+                    subject: document.getElementById('subject').value,
+                    classroom: document.getElementById('classroom').value,
+                    semester: document.getElementById('semester').value,
+                    academicYear: document.getElementById('academicYear').value,
+                    googleDriveLink: document.getElementById('googleDriveLink').value.trim(),
+                    teacherId: currentUserId,
+                };
+                if (!planData.planName || !planData.subject || !planData.classroom) {
+                    Swal.fire('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลที่จำเป็นให้ครบ', 'warning');
+                    return;
+                }
+                try {
+                    const id = document.getElementById('planId').value;
+                    if (id) {
+                        await db.collection('teaching_plans').doc(id).update({ ...planData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    } else {
+                        await db.collection('teaching_plans').add({ ...planData, status: 'draft', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    }
+                    planModal.hide();
+                    Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', showConfirmButton: false, timer: 1500 });
+                } catch (e) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
+            };
+            
+            const updateDownloadButtonState = () => {
+                const checkedCount = document.querySelectorAll('.plan-checkbox:checked').length;
+                downloadQrButton.disabled = checkedCount === 0;
+            };
+
+            document.getElementById('addPlanButton').addEventListener('click', () => {
+                document.getElementById('planForm').reset();
+                document.getElementById('planId').value = '';
+                document.getElementById('planModalLabel').textContent = 'เพิ่มแผนการสอนใหม่';
+                document.getElementById('academicYear').value = new Date().getFullYear() + 543;
+                classroomSelect.innerHTML = '<option value="">-- กรุณาเลือกวิชาก่อน --</option>';
+                classroomSelect.disabled = true;
+            });
+
+            plansTableBody.addEventListener('click', async e => {
+                const target = e.target;
+                const button = target.closest('button');
+
+                if (target.classList.contains('plan-checkbox')) {
+                    updateDownloadButtonState();
+                    return;
+                }
+                if (!button) return;
+                
+                const id = button.dataset.id;
+                
+                if (button.classList.contains('js-edit')) {
+                     try {
+                        const doc = await db.collection('teaching_plans').doc(id).get();
+                        if (doc.exists) {
+                            const plan = doc.data();
+                            document.getElementById('planId').value = id;
+                            document.getElementById('planName').value = plan.planName || '';
+                            document.getElementById('subject').value = plan.subject || '';
+                            subjectSelect.dispatchEvent(new Event('change'));
+                            setTimeout(() => { document.getElementById('classroom').value = plan.classroom || ''; }, 100);
+                            document.getElementById('semester').value = plan.semester || '1';
+                            document.getElementById('academicYear').value = plan.academicYear || '';
+                            document.getElementById('googleDriveLink').value = plan.googleDriveLink || '';
+                            document.getElementById('planModalLabel').textContent = 'แก้ไขแผนการสอน';
+                            planModal.show();
+                        } else { Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลของแผนการสอนนี้', 'error'); }
+                    } catch (error) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลเพื่อแก้ไขได้', 'error'); }
+                }
+                if (button.classList.contains('js-delete')) {
+                    Swal.fire({ title: 'ต้องการลบแผนนี้?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่, ลบเลย', cancelButtonText: 'ยกเลิก' })
+                    .then(result => { if (result.isConfirmed) db.collection('teaching_plans').doc(id).delete(); });
+                }
+                if (button.classList.contains('js-submit')) {
+                    Swal.fire({ title: 'ยืนยันการส่งอนุมัติ?', icon: 'question', showCancelButton: true, confirmButtonText: 'ใช่, ส่งเลย', cancelButtonText: 'ยกเลิก' })
+                    .then(result => { if (result.isConfirmed) db.collection('teaching_plans').doc(id).update({ status: 'pending_approval', submittedAt: firebase.firestore.FieldValue.serverTimestamp() }); });
+                }
+                if (button.classList.contains('js-qr')) {
+                    const link = button.dataset.link;
+                    const name = button.dataset.name;
+                    const subject = button.dataset.subject;
+                    if (!link) { Swal.fire('ไม่พบลิงก์', 'ไม่สามารถสร้าง QR Code ได้', 'warning'); return; }
+                    
+                    document.getElementById('qrCodeModalLabel').innerHTML = `${name}<br><small class="text-muted">${subject || ''}</small>`;
+                    qrCodeContainer.innerHTML = '';
+                    new QRCode(qrCodeContainer, { text: link, width: 256, height: 256, correctLevel : QRCode.CorrectLevel.H });
+                    qrCodeModal.show();
+                }
+            });
+
+            selectAllCheckbox.addEventListener('change', (e) => {
+                document.querySelectorAll('.plan-checkbox').forEach(checkbox => { checkbox.checked = e.target.checked; });
+                updateDownloadButtonState();
+            });
+
+            downloadQrButton.addEventListener('click', async () => {
+                const checkedBoxes = document.querySelectorAll('.plan-checkbox:checked');
+                if (checkedBoxes.length === 0) return;
+                Swal.fire({ title: 'กำลังสร้างไฟล์ ZIP...', text: 'โปรดรอสักครู่', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                const zip = new JSZip();
+                const promises = [];
+                checkedBoxes.forEach(box => {
+                    const link = box.dataset.link;
+                    const name = box.dataset.name || 'qrcode';
+                    const subject = box.dataset.subject || 'no_subject';
+                    const subjectCode = subject.split(' - ')[0].replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    const sanitizedName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    const fileName = `${subjectCode}_${sanitizedName}`;
+
+                    if (link) {
+                        const promise = new Promise(resolve => {
+                            const tempContainer = document.createElement('div');
+                            new QRCode(tempContainer, { text: link, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.H });
+                            
+                            setTimeout(() => {
+                                const img = tempContainer.querySelector('img');
+                                if (img) {
+                                    const canvas = document.createElement('canvas');
+                                    const qrSize = 256;
+                                    const textPadding = 10;
+                                    const fontSize = 14;
+                                    const lineHeight = 18;
+                                    
+                                    // Split text into multiple lines if too long
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.font = `bold ${fontSize}px Kodchasan`;
+                                    const nameLines = getLines(ctx, name, qrSize - (textPadding * 2));
+                                    ctx.font = `${fontSize-2}px Kodchasan`;
+                                    const subjectLines = getLines(ctx, subject, qrSize - (textPadding * 2));
+                                    
+                                    const canvasHeight = qrSize + ((nameLines.length + subjectLines.length) * lineHeight) + (textPadding * 2);
+                                    canvas.width = qrSize;
+                                    canvas.height = canvasHeight;
+                                    
+                                    // Redraw with final dimensions
+                                    ctx.fillStyle = 'white';
+                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                    ctx.drawImage(img, 0, 0);
+
+                                    ctx.fillStyle = 'black';
+                                    ctx.textAlign = 'center';
+                                    
+                                    let textY = qrSize + textPadding + fontSize;
+                                    
+                                    ctx.font = `bold ${fontSize}px Kodchasan`;
+                                    nameLines.forEach(line => {
+                                        ctx.fillText(line, canvas.width / 2, textY);
+                                        textY += lineHeight;
+                                    });
+
+                                    ctx.font = `${fontSize-2}px Kodchasan`;
+                                    subjectLines.forEach(line => {
+                                        ctx.fillText(line, canvas.width / 2, textY);
+                                        textY += lineHeight;
+                                    });
+
+                                    const base64 = canvas.toDataURL('image/png').split(',')[1];
+                                    zip.file(`${fileName}.png`, base64, { base64: true });
+                                }
+                                resolve();
+                            }, 200);
+                        });
+                        promises.push(promise);
+                    }
+                });
+                await Promise.all(promises);
+                zip.generateAsync({ type: "blob" }).then(content => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = "qrcodes.zip";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    Swal.close();
+                });
+            });
+            
+            function getLines(ctx, text, maxWidth) {
+                const words = text.split(" ");
+                const lines = [];
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    const word = words[i];
+                    const width = ctx.measureText(currentLine + " " + word).width;
+                    if (width < maxWidth) {
+                        currentLine += " " + word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            }
+
+            subjectSelect.addEventListener('change', (e) => {
+                const selectedSubjectText = e.target.value;
+                classroomSelect.innerHTML = '<option value="">-- กรุณาเลือกห้องเรียน --</option>';
+                classroomSelect.disabled = true;
+                if (selectedSubjectText) {
+                    const selectedSubject = subjectsCache.find(s => `${s.code} - ${s.name}` === selectedSubjectText);
+                    if (selectedSubject && Array.isArray(selectedSubject.classrooms) && selectedSubject.classrooms.length > 0) {
+                        selectedSubject.classrooms.sort().forEach(classroom => {
+                            classroomSelect.innerHTML += `<option value="${classroom}">${classroom}</option>`;
+                        });
+                        classroomSelect.disabled = false;
+                    }
+                }
+            });
+            document.getElementById('savePlanButton').addEventListener('click', savePlan);
+            searchInput.addEventListener('input', e => { currentFilters.searchTerm = e.target.value; applyFiltersAndRender(); });
+            statusFilter.addEventListener('change', e => { currentFilters.status = e.target.value; applyFiltersAndRender(); });
+            document.getElementById('resetFilterButton').addEventListener('click', () => {
+                searchInput.value = ''; statusFilter.value = '';
+                currentFilters = { searchTerm: '', status: '' };
+                applyFiltersAndRender();
+            });
+            document.getElementById('logoutButton').addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUserId = user.uid;
+                    fetchUserDataAndSetupNav(user.uid);
+                    listenToPlans(user.uid);
+                    loadFormDependencies();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

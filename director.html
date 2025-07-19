@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สำหรับผู้อำนวยการ - ระบบบันทึกการส่งแผนการสอน</title>
+
+    <!-- Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bma-green: #006A4E;
+            --bma-green-dark: #00563F;
+            --light-green: #F0F7F5;
+            --text-color: #333;
+            --status-final-approved: #0d6efd; /* Blue for final approval */
+        }
+        body {
+            font-family: 'Kodchasan', sans-serif;
+            background-color: var(--light-green);
+            color: var(--text-color);
+        }
+        .navbar {
+            background-color: var(--bma-green);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-tabs .nav-link { color: var(--bma-green); }
+        .nav-tabs .nav-link.active {
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+        .card { border-radius: 0.75rem; border: 1px solid #dee2e6; }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        .swal2-confirm { background-color: var(--bma-green) !important; }
+        .badge.bg-primary { background-color: var(--status-final-approved) !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-person-workspace"></i> สำหรับผู้อำนวยการ</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="dropdown ms-auto">
+                    <a href="#" class="nav-link dropdown-toggle text-white" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> <span id="userName"></span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item text-danger" href="#" id="logoutButton">ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <h2 class="mb-3">ภาพรวมแผนการสอน</h2>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="directorTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="final-approval-tab" data-bs-toggle="tab" data-bs-target="#final-approval-pane" type="button" role="tab">
+                    รออนุมัติใช้งาน <span class="badge bg-info text-dark" id="final-approval-count">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
+                    ประวัติทั้งหมด
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="directorTabContent">
+            <!-- Final Approval Tab -->
+            <div class="tab-pane fade show active" id="final-approval-pane" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ชื่อแผนการสอน</th>
+                                        <th>ผู้สอน</th>
+                                        <th>ผู้อนุมัติ (หัวหน้าฝ่าย)</th>
+                                        <th class="text-center">การดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finalApprovalTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div id="no-final-approval-message" class="text-center p-5 d-none">
+                            <i class="bi bi-check2-all fs-1 text-success"></i>
+                            <h5 class="mt-3">ไม่มีแผนการสอนที่รออนุมัติใช้งาน</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-pane fade" id="history-pane" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="yearFilter" class="form-label">กรองตามปีการศึกษา:</label>
+                                <select class="form-select" id="yearFilter">
+                                    <option value="">ทั้งหมด</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ชื่อแผนการสอน</th>
+                                        <th>ผู้สอน</th>
+                                        <th>สถานะ</th>
+                                        <th>วันที่อัปเดตล่าสุด</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody"></tbody>
+                            </table>
+                        </div>
+                         <div id="no-history-message" class="text-center p-5 d-none">
+                            <i class="bi bi-clock-history fs-1 text-muted"></i>
+                            <h5 class="mt-3">ยังไม่มีประวัติแผนการสอน</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof firebaseConfig === 'undefined') {
+                document.body.innerHTML = '<div class="alert alert-danger m-3">Fatal Error: firebase-config.js not loaded.</div>';
+                return;
+            }
+
+            const app = firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            let currentUserId = null;
+            let allUsersCache = {};
+            let allPlansCache = [];
+
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const logoutButton = document.getElementById('logoutButton');
+            const userNameEl = document.getElementById('userName');
+            const finalApprovalTableBody = document.getElementById('finalApprovalTableBody');
+            const historyTableBody = document.getElementById('historyTableBody');
+            const finalApprovalCountBadge = document.getElementById('final-approval-count');
+            const yearFilter = document.getElementById('yearFilter');
+
+            const fetchAllUsers = async () => {
+                const snapshot = await db.collection('users').get();
+                snapshot.forEach(doc => { allUsersCache[doc.id] = doc.data(); });
+            };
+
+            const authorizeAndLoad = async (userId) => {
+                try {
+                    const userDoc = await db.collection('users').doc(userId).get();
+                    if (userDoc.exists && userDoc.data().role === 'director') {
+                        userNameEl.textContent = `${userDoc.data().firstName} ${userDoc.data().lastName}`;
+                        await fetchAllUsers();
+                        listenToAllPlans();
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                } catch (error) {
+                    window.location.href = 'login.html';
+                }
+            };
+
+            const listenToAllPlans = () => {
+                // Note: Listening to the whole collection can be costly on large datasets.
+                // For production, consider more targeted queries or pagination.
+                db.collection('teaching_plans').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+                    allPlansCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    populateYearFilter();
+                    renderAllTables();
+                    loadingOverlay.style.display = 'none';
+                }, error => {
+                    console.error("Error fetching all plans:", error);
+                    loadingOverlay.style.display = 'none';
+                });
+            };
+
+            const populateYearFilter = () => {
+                const years = [...new Set(allPlansCache.map(p => p.academicYear))].filter(Boolean).sort((a,b) => b-a);
+                const currentVal = yearFilter.value;
+                yearFilter.innerHTML = '<option value="">ปีการศึกษาทั้งหมด</option>';
+                years.forEach(year => {
+                    yearFilter.innerHTML += `<option value="${year}">${year}</option>`;
+                });
+                yearFilter.value = currentVal;
+            };
+
+            const renderAllTables = () => {
+                // Render Final Approval Table
+                const plansForFinalApproval = allPlansCache.filter(p => p.status === 'approved');
+                finalApprovalCountBadge.textContent = plansForFinalApproval.length;
+                renderTable(plansForFinalApproval, finalApprovalTableBody, document.getElementById('no-final-approval-message'), 'final-approval');
+                
+                // Render History Table
+                let historyPlans = allPlansCache.filter(p => p.status !== 'draft'); // Show all except drafts
+                const selectedYear = yearFilter.value;
+                if (selectedYear) {
+                    historyPlans = historyPlans.filter(p => p.academicYear == selectedYear);
+                }
+                renderTable(historyPlans, historyTableBody, document.getElementById('no-history-message'), 'history');
+            };
+
+            const getStatusBadge = (status) => {
+                const map = {
+                    pending_approval: { text: 'รอหัวหน้าฝ่ายอนุมัติ', class: 'bg-warning text-dark' },
+                    approved: { text: 'รอ ผอ. อนุมัติ', class: 'bg-info text-dark' },
+                    final_approved: { text: 'อนุมัติใช้งานแล้ว', class: 'bg-primary' },
+                    needs_improvement: { text: 'ต้องปรับปรุง', class: 'bg-danger' },
+                };
+                const { text, class: badgeClass } = map[status] || { text: status, class: 'bg-secondary' };
+                return `<span class="badge ${badgeClass}">${text}</span>`;
+            };
+
+            const renderTable = (docs, tbody, noDataMessage, type) => {
+                if (docs.length === 0) {
+                    tbody.innerHTML = '';
+                    noDataMessage.classList.remove('d-none');
+                    return;
+                }
+                noDataMessage.classList.add('d-none');
+                tbody.innerHTML = docs.map(plan => {
+                    const teacher = allUsersCache[plan.teacherId] || { firstName: 'N/A' };
+                    const teacherName = `${teacher.firstName} ${teacher.lastName}`;
+                    
+                    if (type === 'final-approval') {
+                        const approver = allUsersCache[plan.approverId] || { firstName: 'N/A' };
+                        const approverName = `${approver.firstName} ${approver.lastName}`;
+                        return `
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">${plan.planName}</div>
+                                    <a href="${plan.googleDriveLink}" target="_blank" class="small text-muted text-decoration-none"><i class="bi bi-link-45deg"></i> ดูไฟล์</a>
+                                </td>
+                                <td>${teacherName}</td>
+                                <td>${approverName}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-primary js-final-approve" data-id="${plan.id}"><i class="bi bi-patch-check-fill"></i> อนุมัติใช้งาน</button>
+                                </td>
+                            </tr>`;
+                    } else { // history
+                        const lastUpdate = plan.finalApprovedAt || plan.approvedAt || plan.submittedAt || plan.createdAt;
+                        const lastUpdateDate = lastUpdate ? new Date(lastUpdate.seconds * 1000).toLocaleDateString('th-TH') : 'N/A';
+                        return `
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">${plan.planName}</div>
+                                    <a href="${plan.googleDriveLink}" target="_blank" class="small text-muted text-decoration-none"><i class="bi bi-link-45deg"></i> ดูไฟล์</a>
+                                </td>
+                                <td>${teacherName}</td>
+                                <td>${getStatusBadge(plan.status)}</td>
+                                <td>${lastUpdateDate}</td>
+                            </tr>`;
+                    }
+                }).join('');
+            };
+
+            const finalApprovePlan = (planId) => {
+                Swal.fire({
+                    title: 'ยืนยันการอนุมัติใช้งาน',
+                    text: 'คุณต้องการอนุมัติให้ใช้แผนการสอนนี้ใช่หรือไม่?',
+                    icon: 'question', showCancelButton: true,
+                    confirmButtonText: 'ใช่, อนุมัติใช้งาน', cancelButtonText: 'ยกเลิก'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            await db.collection('teaching_plans').doc(planId).update({
+                                status: 'final_approved',
+                                finalApprovedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                finalApproverId: currentUserId
+                            });
+                            Swal.fire('อนุมัติใช้งานสำเร็จ!', '', 'success');
+                        } catch (e) { Swal.fire('ผิดพลาด', 'ไม่สามารถอนุมัติได้', 'error'); }
+                    }
+                });
+            };
+
+            document.body.addEventListener('click', e => {
+                const button = e.target.closest('button.js-final-approve');
+                if (button) finalApprovePlan(button.dataset.id);
+            });
+
+            yearFilter.addEventListener('change', renderAllTables);
+            logoutButton.addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUserId = user.uid;
+                    authorizeAndLoad(user.uid);
+                } else {
+                    window.location.href = 'login.html';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

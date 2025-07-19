@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการระบบ - ระบบบันทึกการส่งแผนการสอน</title>
+
+    <!-- Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        :root {
+            --bma-green: #006A4E;
+            --bma-green-dark: #00563F;
+            --light-green: #F0F7F5;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Kodchasan', sans-serif;
+            background-color: var(--light-green);
+            color: var(--text-color);
+        }
+        .navbar {
+            background-color: var(--bma-green);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-tabs .nav-link {
+            color: var(--bma-green);
+        }
+        .nav-tabs .nav-link.active {
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+        .card {
+            border-radius: 0.75rem;
+            border: 1px solid #dee2e6;
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        .swal2-confirm { background-color: var(--bma-green) !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="admin.html"><i class="bi bi-shield-lock-fill"></i> Admin Panel</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="approve_plans.html">อนุมัติแผน</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="my_plans.html">แผนของฉัน</a>
+                    </li>
+                </ul>
+                <div class="dropdown">
+                    <a href="#" class="nav-link dropdown-toggle text-white" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> <span id="userName">Admin</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item text-danger" href="#" id="logoutButton">ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <h2 class="mb-3">จัดการระบบ</h2>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="adminTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-tab-pane" type="button" role="tab">จัดการผู้ใช้งาน</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="depts-tab" data-bs-toggle="tab" data-bs-target="#depts-tab-pane" type="button" role="tab">จัดการกลุ่มสาระ</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="subjects-tab" data-bs-toggle="tab" data-bs-target="#subjects-tab-pane" type="button" role="tab">จัดการรายวิชา</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="classrooms-tab" data-bs-toggle="tab" data-bs-target="#classrooms-tab-pane" type="button" role="tab">จัดการห้องเรียน</button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="adminTabContent">
+            <!-- Users Tab -->
+            <div class="tab-pane fade show active" id="users-tab-pane" role="tabpanel">
+                <div class="card mt-3"><div class="card-body">
+                    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#userModal" id="addUserButton"><i class="bi bi-plus-circle"></i> เพิ่มผู้ใช้ใหม่</button>
+                    <div class="table-responsive"><table class="table">
+                        <thead><tr><th>ชื่อ-สกุล</th><th>อีเมล</th><th>สิทธิ์</th><th>กลุ่มสาระ</th><th>การดำเนินการ</th></tr></thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table></div>
+                </div></div>
+            </div>
+
+            <!-- Departments Tab -->
+            <div class="tab-pane fade" id="depts-tab-pane" role="tabpanel">
+                 <div class="card mt-3"><div class="card-body">
+                    <button class="btn btn-primary mb-3" id="addDeptButton"><i class="bi bi-plus-circle"></i> เพิ่มกลุ่มสาระ</button>
+                    <div class="table-responsive"><table class="table">
+                        <thead><tr><th>ชื่อกลุ่มสาระ</th><th>การดำเนินการ</th></tr></thead>
+                        <tbody id="deptsTableBody"></tbody>
+                    </table></div>
+                </div></div>
+            </div>
+
+            <!-- Subjects Tab -->
+            <div class="tab-pane fade" id="subjects-tab-pane" role="tabpanel">
+                 <div class="card mt-3"><div class="card-body">
+                    <button class="btn btn-primary mb-3" id="addSubjectButton" data-bs-toggle="modal" data-bs-target="#subjectModal"><i class="bi bi-plus-circle"></i> เพิ่มรายวิชา</button>
+                    <div class="table-responsive"><table class="table">
+                        <thead><tr><th>รหัสวิชา</th><th>ชื่อรายวิชา</th><th>ห้องเรียน</th><th>การดำเนินการ</th></tr></thead>
+                        <tbody id="subjectsTableBody"></tbody>
+                    </table></div>
+                </div></div>
+            </div>
+
+            <!-- Classrooms Tab -->
+            <div class="tab-pane fade" id="classrooms-tab-pane" role="tabpanel">
+                 <div class="card mt-3"><div class="card-body">
+                    <button class="btn btn-primary mb-3" id="addClassroomButton"><i class="bi bi-plus-circle"></i> เพิ่มห้องเรียน</button>
+                    <div class="table-responsive"><table class="table">
+                        <thead><tr><th>ชื่อห้องเรียน</th><th>การดำเนินการ</th></tr></thead>
+                        <tbody id="classroomsTableBody"></tbody>
+                    </table></div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="userModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userId">
+                        <div class="mb-3"><label class="form-label">ชื่อ</label><input type="text" id="userFirstName" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">นามสกุล</label><input type="text" id="userLastName" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">อีเมล</label><input type="email" id="userEmail" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">รหัสผ่าน (สำหรับผู้ใช้ใหม่)</label><input type="password" id="userPassword" class="form-control"></div>
+                        <div class="mb-3"><label class="form-label">สิทธิ์</label><select id="userRole" class="form-select" required><option value="teacher">ครูผู้สอน</option><option value="head_department">หัวหน้ากลุ่มสาระ</option><option value="director">ผู้อำนวยการ</option><option value="admin">ผู้ดูแลระบบ</option></select></div>
+                        <div class="mb-3"><label class="form-label">กลุ่มสาระ</label><select id="userDepartment" class="form-select"></select></div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="saveUserButton">บันทึก</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Modal -->
+    <div class="modal fade" id="subjectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="subjectModalLabel">เพิ่มรายวิชา</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="subjectForm">
+                        <input type="hidden" id="subjectId">
+                        <div class="mb-3"><label class="form-label">รหัสวิชา</label><input type="text" id="subjectCode" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">ชื่อรายวิชา</label><input type="text" id="subjectName" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">ห้องเรียน (เลือกได้หลายห้อง)</label><select id="subjectClassrooms" class="form-select" multiple style="height: 150px;"></select></div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="saveSubjectButton">บันทึก</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Item Modal -->
+    <div class="modal fade" id="itemModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="itemModalLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <form id="itemForm"><input type="hidden" id="itemType"><input type="hidden" id="itemId"><div class="mb-3"><label class="form-label" id="itemNameLabel"></label><input type="text" id="itemName" class="form-control" required></div></form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary" id="saveItemButton">บันทึก</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof firebaseConfig === 'undefined') {
+                document.body.innerHTML = '<div class="alert alert-danger m-3">Fatal Error: firebase-config.js not loaded.</div>';
+                return;
+            }
+
+            const app = firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            let departmentsCache = {};
+            
+            const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+            const subjectModal = new bootstrap.Modal(document.getElementById('subjectModal'));
+            const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
+
+            auth.onAuthStateChanged(async user => {
+                if (user) {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    if (userDoc.exists && userDoc.data().role === 'admin') {
+                        document.getElementById('userName').textContent = `${userDoc.data().firstName} ${userDoc.data().lastName}`;
+                        loadAllData();
+                    } else { window.location.href = 'login.html'; }
+                } else { window.location.href = 'login.html'; }
+            });
+
+            function loadAllData() {
+                listenToDepartments();
+                listenToUsers();
+                listenToSubjects();
+                listenToClassrooms();
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+
+            async function deleteItem(collection, id, name) {
+                const result = await Swal.fire({ title: `ต้องการลบ "${name}"?`, text: "ไม่สามารถย้อนกลับได้!", icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่, ลบเลย', cancelButtonText: 'ยกเลิก' });
+                if (result.isConfirmed) {
+                    try {
+                        await db.collection(collection).doc(id).delete();
+                        Swal.fire('ลบสำเร็จ!', '', 'success');
+                    } catch (error) { Swal.fire('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error'); }
+                }
+            }
+
+            // --- User Management ---
+            const usersTableBody = document.getElementById('usersTableBody');
+            function listenToUsers() {
+                 db.collection('users').orderBy('firstName').onSnapshot(snapshot => {
+                    usersTableBody.innerHTML = snapshot.docs.map(doc => {
+                        const user = { id: doc.id, ...doc.data() };
+                        const deptName = departmentsCache[user.departmentId] || 'N/A';
+                        return `<tr>
+                                <td>${user.firstName} ${user.lastName}</td>
+                                <td>${user.email}</td>
+                                <td>${user.role}</td>
+                                <td>${deptName}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary js-edit-user" data-id="${user.id}">แก้ไข</button>
+                                    <button class="btn btn-sm btn-outline-warning js-reset-pass" data-email="${user.email}">รีเซ็ตรหัสผ่าน</button>
+                                </td>
+                            </tr>`;
+                    }).join('');
+                });
+            }
+            document.getElementById('addUserButton').addEventListener('click', () => {
+                document.getElementById('userForm').reset();
+                document.getElementById('userId').value = '';
+                document.getElementById('userModalLabel').textContent = 'เพิ่มผู้ใช้ใหม่';
+                document.getElementById('userPassword').parentElement.style.display = 'block';
+            });
+            
+            // *** FIX: Added complete logic for saving users ***
+            document.getElementById('saveUserButton').addEventListener('click', async () => {
+                const id = document.getElementById('userId').value;
+                const email = document.getElementById('userEmail').value;
+                const password = document.getElementById('userPassword').value;
+                const userData = {
+                    firstName: document.getElementById('userFirstName').value,
+                    lastName: document.getElementById('userLastName').value,
+                    email: email,
+                    role: document.getElementById('userRole').value,
+                    departmentId: document.getElementById('userDepartment').value || null
+                };
+
+                if (id) { // Editing existing user
+                    try {
+                        await db.collection('users').doc(id).update(userData);
+                        Swal.fire('สำเร็จ', 'อัปเดตข้อมูลผู้ใช้เรียบร้อย', 'success');
+                        userModal.hide();
+                    } catch (error) {
+                         Swal.fire('ผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลได้', 'error');
+                    }
+                } else { // Creating new user
+                    if (!password) {
+                        Swal.fire('ผิดพลาด', 'กรุณากำหนดรหัสผ่านสำหรับผู้ใช้ใหม่', 'warning');
+                        return;
+                    }
+                    // This is a simplified way. For production, use Firebase Functions to create users.
+                    const tempApp = firebase.initializeApp(firebaseConfig, "tempAppForUserCreation");
+                    try {
+                        const userCred = await tempApp.auth().createUserWithEmailAndPassword(email, password);
+                        await db.collection('users').doc(userCred.user.uid).set({ ...userData, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                        Swal.fire('สำเร็จ', 'สร้างผู้ใช้ใหม่เรียบร้อย', 'success');
+                        userModal.hide();
+                    } catch (error) {
+                        Swal.fire('ผิดพลาด', `ไม่สามารถสร้างผู้ใช้ได้: ${error.message}`, 'error');
+                    } finally {
+                        await tempApp.auth().signOut();
+                        await tempApp.delete();
+                    }
+                }
+            });
+
+            // *** FIX: Added complete logic for user table clicks ***
+            usersTableBody.addEventListener('click', async e => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                
+                if (button.classList.contains('js-edit-user')) {
+                    const id = button.dataset.id;
+                    const doc = await db.collection('users').doc(id).get();
+                    const user = doc.data();
+                    document.getElementById('userId').value = id;
+                    document.getElementById('userFirstName').value = user.firstName;
+                    document.getElementById('userLastName').value = user.lastName;
+                    document.getElementById('userEmail').value = user.email;
+                    document.getElementById('userRole').value = user.role;
+                    document.getElementById('userDepartment').value = user.departmentId || '';
+                    document.getElementById('userModalLabel').textContent = 'แก้ไขผู้ใช้';
+                    document.getElementById('userPassword').parentElement.style.display = 'none';
+                    userModal.show();
+                }
+                if (button.classList.contains('js-reset-pass')) {
+                    const email = button.dataset.email;
+                    const result = await Swal.fire({
+                        title: `ส่งอีเมลรีเซ็ตรหัสผ่าน?`,
+                        text: `ระบบจะส่งอีเมลไปยัง ${email} เพื่อให้ผู้ใช้ตั้งรหัสผ่านใหม่`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'ใช่, ส่งเลย',
+                        cancelButtonText: 'ยกเลิก'
+                    });
+                    if (result.isConfirmed) {
+                        try {
+                            await auth.sendPasswordResetEmail(email);
+                            Swal.fire('ส่งสำเร็จ!', `อีเมลถูกส่งไปยัง ${email} แล้ว`, 'success');
+                        } catch (error) {
+                            Swal.fire('ผิดพลาด', `ไม่สามารถส่งอีเมลได้: ${error.message}`, 'error');
+                        }
+                    }
+                }
+            });
+
+
+            // --- Subject Management ---
+            const subjectsTableBody = document.getElementById('subjectsTableBody');
+            function listenToSubjects() {
+                db.collection('subjects').orderBy('code').onSnapshot(snapshot => {
+                    subjectsTableBody.innerHTML = snapshot.docs.map(doc => {
+                        const subject = { id: doc.id, ...doc.data() };
+                        const classroomBadges = (subject.classrooms || []).map(c => `<span class="badge bg-secondary me-1">${c}</span>`).join('');
+                        return `<tr>
+                                <td>${subject.code}</td>
+                                <td>${subject.name}</td>
+                                <td>${classroomBadges || 'N/A'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary js-edit-subject" data-id="${subject.id}">แก้ไข</button>
+                                    <button class="btn btn-sm btn-outline-danger js-delete-subject" data-id="${subject.id}" data-name="${subject.name}">ลบ</button>
+                                </td>
+                            </tr>`;
+                    }).join('');
+                });
+            }
+            document.getElementById('addSubjectButton').addEventListener('click', () => {
+                document.getElementById('subjectForm').reset();
+                document.getElementById('subjectId').value = '';
+                document.getElementById('subjectModalLabel').textContent = 'เพิ่มรายวิชาใหม่';
+                Array.from(document.getElementById('subjectClassrooms').options).forEach(opt => opt.selected = false);
+            });
+            document.getElementById('saveSubjectButton').addEventListener('click', async () => {
+                const id = document.getElementById('subjectId').value;
+                const selectedClassrooms = Array.from(document.getElementById('subjectClassrooms').selectedOptions).map(opt => opt.value);
+                const data = {
+                    code: document.getElementById('subjectCode').value,
+                    name: document.getElementById('subjectName').value,
+                    classrooms: selectedClassrooms
+                };
+                try {
+                    if (id) { await db.collection('subjects').doc(id).update(data); }
+                    else { await db.collection('subjects').add(data); }
+                    Swal.fire('สำเร็จ', 'บันทึกข้อมูลรายวิชาเรียบร้อย', 'success');
+                    subjectModal.hide();
+                } catch (error) { Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
+            });
+            subjectsTableBody.addEventListener('click', async e => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const id = button.dataset.id;
+                if (button.classList.contains('js-edit-subject')) {
+                    const doc = await db.collection('subjects').doc(id).get();
+                    const subject = doc.data();
+                    document.getElementById('subjectId').value = id;
+                    document.getElementById('subjectCode').value = subject.code || '';
+                    document.getElementById('subjectName').value = subject.name || '';
+                    document.getElementById('subjectModalLabel').textContent = 'แก้ไขรายวิชา';
+                    Array.from(document.getElementById('subjectClassrooms').options).forEach(opt => {
+                        opt.selected = (subject.classrooms || []).includes(opt.value);
+                    });
+                    subjectModal.show();
+                }
+                if (button.classList.contains('js-delete-subject')) {
+                    deleteItem('subjects', id, button.dataset.name);
+                }
+            });
+
+            // --- Generic Item Management (Depts, Classrooms) ---
+            function setupItemModal(type, title) {
+                document.getElementById('itemForm').reset();
+                document.getElementById('itemType').value = type;
+                document.getElementById('itemId').value = '';
+                document.getElementById('itemModalLabel').textContent = `เพิ่ม${title}`;
+                document.getElementById('itemNameLabel').textContent = `ชื่อ${title}`;
+                itemModal.show();
+            }
+            document.getElementById('addDeptButton').addEventListener('click', () => setupItemModal('departments', 'กลุ่มสาระ'));
+            document.getElementById('addClassroomButton').addEventListener('click', () => setupItemModal('classrooms', 'ห้องเรียน'));
+            
+            // *** FIX: Added complete logic for saving generic items ***
+            document.getElementById('saveItemButton').addEventListener('click', async () => {
+                const type = document.getElementById('itemType').value;
+                const id = document.getElementById('itemId').value;
+                const data = { name: document.getElementById('itemName').value };
+                if (!data.name) {
+                    Swal.fire('ผิดพลาด', 'กรุณากรอกชื่อ', 'warning');
+                    return;
+                }
+                try {
+                    if (id) { await db.collection(type).doc(id).update(data); }
+                    else { await db.collection(type).add(data); }
+                    Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+                    itemModal.hide();
+                } catch (error) { Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
+            });
+            
+            function createItemListener(config) {
+                 db.collection(config.collection).orderBy('name').onSnapshot(snapshot => {
+                    config.tbody.innerHTML = snapshot.docs.map(doc => {
+                        const item = { id: doc.id, ...doc.data() };
+                        return `<tr>
+                                <td>${item.name}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary js-edit" data-id="${item.id}">แก้ไข</button>
+                                    <button class="btn btn-sm btn-outline-danger js-delete" data-id="${item.id}" data-name="${item.name}">ลบ</button>
+                                </td>
+                            </tr>`;
+                    }).join('');
+                });
+                config.tbody.addEventListener('click', e => {
+                    const button = e.target.closest('button');
+                    if (!button) return;
+                    if (button.classList.contains('js-edit')) {
+                        editItem(config.collection, button.dataset.id, config.title);
+                    }
+                     if (button.classList.contains('js-delete')) {
+                        deleteItem(config.collection, button.dataset.id, button.dataset.name);
+                    }
+                });
+            }
+            async function editItem(type, id, title) {
+                const doc = await db.collection(type).doc(id).get();
+                setupItemModal(type, title);
+                document.getElementById('itemModalLabel').textContent = `แก้ไข${title}`;
+                document.getElementById('itemId').value = id;
+                document.getElementById('itemName').value = doc.data().name;
+            }
+            
+            function listenToDepartments() {
+                const userDeptSelect = document.getElementById('userDepartment');
+                db.collection('departments').orderBy('name').onSnapshot(snapshot => {
+                    let optionsHtml = '<option value="">-- ไม่ระบุ --</option>';
+                    departmentsCache = {};
+                    snapshot.forEach(doc => {
+                        departmentsCache[doc.id] = doc.data().name;
+                        optionsHtml += `<option value="${doc.id}">${doc.data().name}</option>`;
+                    });
+                    userDeptSelect.innerHTML = optionsHtml;
+                });
+                createItemListener({ collection: 'departments', tbody: document.getElementById('deptsTableBody'), title: 'กลุ่มสาระ' });
+            }
+            function listenToClassrooms() {
+                const subjectClassroomsSelect = document.getElementById('subjectClassrooms');
+                 db.collection('classrooms').orderBy('name').onSnapshot(snapshot => {
+                    subjectClassroomsSelect.innerHTML = snapshot.docs.map(doc => `<option value="${doc.data().name}">${doc.data().name}</option>`).join('');
+                });
+                createItemListener({ collection: 'classrooms', tbody: document.getElementById('classroomsTableBody'), title: 'ห้องเรียน' });
+            }
+
+            document.getElementById('logoutButton').addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+        });
+    </script>
+</body>
+</html>

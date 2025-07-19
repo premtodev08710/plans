@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียน - ระบบบันทึกการส่งแผนการสอน</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Font: Kodchasan -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Custom Styles --- */
+        :root {
+            --bma-green: #006A4E; /* สีเขียว กทม. */
+            --bma-green-dark: #00563F;
+            --light-green: #E6F0EC;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Kodchasan', sans-serif;
+            background-color: var(--light-green);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 0;
+            color: var(--text-color);
+        }
+
+        .register-container {
+            max-width: 550px;
+            width: 100%;
+        }
+
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: var(--bma-green);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: none;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .card-header .bi-person-plus-fill {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--bma-green);
+            box-shadow: 0 0 0 0.25rem rgba(0, 106, 78, 0.25);
+        }
+
+        .btn-register {
+            background-color: var(--bma-green);
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-register:hover {
+            background-color: var(--bma-green-dark);
+            color: white;
+        }
+        
+        .btn-register .spinner-border {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .form-text a {
+            color: var(--bma-green);
+            text-decoration: none;
+        }
+
+        .form-text a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-container p-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-plus-fill"></i>
+                <h3>ระบบส่งแผนการสอน</h3>
+            </div>
+            <div class="card-body">
+                <h4 class="text-center mb-4 fw-bold">สร้างบัญชีผู้ใช้ใหม่</h4>
+                
+                <!-- Registration Form -->
+                <form id="registerForm" novalidate>
+                    <!-- Alert for messages -->
+                    <div id="alert-container"></div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="firstName" class="form-label">ชื่อ</label>
+                            <input type="text" class="form-control" id="firstName" placeholder="ชื่อจริง" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lastName" class="form-label">นามสกุล</label>
+                            <input type="text" class="form-control" id="lastName" placeholder="นามสกุล" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">อีเมล</label>
+                        <input type="email" class="form-control" id="email" placeholder="กรอกอีเมลที่ใช้งานได้" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="password" placeholder="อย่างน้อย 6 ตัวอักษร" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="confirmPassword" class="form-label">ยืนยันรหัสผ่าน</label>
+                        <input type="password" class="form-control" id="confirmPassword" placeholder="กรอกรหัสผ่านอีกครั้ง" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-register w-100" id="registerButton">
+                        <span id="button-text">ลงทะเบียน</span>
+                        <span id="button-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+                <!-- End Registration Form -->
+
+                <hr>
+                <div class="form-text text-center">
+                    มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบที่นี่</a>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center text-muted mt-4 small">
+            &copy; 2024 ระบบบันทึกการส่งแผนการสอน
+        </footer>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- Load Firebase Config -->
+    <script src="firebase-config.js"></script>
+
+    <!-- Initialize Firebase and Page Script -->
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const registerForm = document.getElementById('registerForm');
+            const registerButton = document.getElementById('registerButton');
+            const buttonText = document.getElementById('button-text');
+            const buttonSpinner = document.getElementById('button-spinner');
+            const alertContainer = document.getElementById('alert-container');
+
+            registerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const firstName = document.getElementById('firstName').value.trim();
+                const lastName = document.getElementById('lastName').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+
+                // --- Validation ---
+                clearAlert();
+                if (!firstName || !lastName || !email || !password || !confirmPassword) {
+                    showAlert('กรุณากรอกข้อมูลให้ครบทุกช่อง', 'warning');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    showAlert('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน', 'danger');
+                    return;
+                }
+                if (password.length < 6) {
+                    showAlert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร', 'warning');
+                    return;
+                }
+
+                toggleLoading(true);
+
+                // --- Create User with Firebase Auth ---
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(userCredential => {
+                        const user = userCredential.user;
+                        console.log('สร้างบัญชีสำเร็จ:', user.uid);
+
+                        // --- Save user info to Firestore ---
+                        // By default, new users are 'teacher'. Admin can change roles later.
+                        return db.collection('users').doc(user.uid).set({
+                            firstName: firstName,
+                            lastName: lastName,
+                            email: email,
+                            role: 'teacher', // กำหนดสิทธิ์เริ่มต้นเป็น 'teacher'
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    })
+                    .then(() => {
+                        console.log('บันทึกข้อมูลผู้ใช้ลง Firestore สำเร็จ');
+                        showAlert('ลงทะเบียนสำเร็จ! กำลังนำคุณไปยังหน้าหลัก...', 'success');
+                        
+                        // Redirect to main page after a short delay
+                        setTimeout(() => {
+                            window.location.href = 'my_plans.html'; // ไปยังหน้าหลักของครู
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        const errorMessage = getThaiErrorMessage(error.code);
+                        console.error('เกิดข้อผิดพลาดในการลงทะเบียน:', error.code, error.message);
+                        showAlert(errorMessage, 'danger');
+                        toggleLoading(false);
+                    });
+            });
+
+            function toggleLoading(isLoading) {
+                registerButton.disabled = isLoading;
+                buttonText.classList.toggle('d-none', isLoading);
+                buttonSpinner.classList.toggle('d-none', !isLoading);
+            }
+
+            function showAlert(message, type = 'danger') {
+                const icon = {
+                    success: 'bi-check-circle-fill',
+                    danger: 'bi-exclamation-triangle-fill',
+                    warning: 'bi-exclamation-triangle-fill'
+                }[type];
+
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = [
+                    `<div class="alert alert-${type} alert-dismissible fade show" role="alert">`,
+                    `   <i class="bi ${icon} me-2"></i>${message}`,
+                    '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                    '</div>'
+                ].join('');
+                alertContainer.innerHTML = ''; // Clear previous alerts
+                alertContainer.append(wrapper);
+            }
+
+            function clearAlert() {
+                alertContainer.innerHTML = '';
+            }
+
+            function getThaiErrorMessage(errorCode) {
+                switch (errorCode) {
+                    case 'auth/email-already-in-use':
+                        return 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น';
+                    case 'auth/invalid-email':
+                        return 'รูปแบบอีเมลไม่ถูกต้อง';
+                    case 'auth/weak-password':
+                        return 'รหัสผ่านไม่ปลอดภัย ควรมีความยาวอย่างน้อย 6 ตัวอักษร';
+                    default:
+                        return 'เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง';
+                }
+            }
+        });
+    </script>
+    
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
